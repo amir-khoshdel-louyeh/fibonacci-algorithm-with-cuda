@@ -1,93 +1,187 @@
-%%writefile app.cu
-
-#include <iostream>
-#include <cuda_runtime.h>
 #include <chrono>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <string>
+#include <vector>
 
-// ---------------------------
-// Recursive CPU Fibonacci
+#include <cuda_runtime.h>
+
+namespace {
+
+constexpr int kDefaultCount = 5;
+constexpr int kMaxCount = 47;
+
+struct Options {
+    int count = kDefaultCount;
+    std::string csv_path;
+};
+
 int fibonacci_cpu(int n) {
-    if (n <= 1) return n;
+    if (n <= 1) {
+        return n;
+    }
     return fibonacci_cpu(n - 1) + fibonacci_cpu(n - 2);
 }
 
-// ---------------------------
-// Recursive GPU Fibonacci
 __device__ int fibonacci_device(int n) {
-    if (n <= 1) return n;
+    if (n <= 1) {
+        return n;
+    }
     return fibonacci_device(n - 1) + fibonacci_device(n - 2);
 }
 
-// ---------------------------
-// CUDA kernel with single thread (sequential execution)
 __global__ void fibonacci_kernel(int* output, int count) {
     for (int i = 0; i < count; ++i) {
         output[i] = fibonacci_device(i);
     }
 }
 
-// ---------------------------
-// Error checking helper
-void checkCuda(cudaError_t err, const char* msg) {
-    if (err != cudaSuccess) {
-        std::cerr << "CUDA Error: " << msg << " -> " << cudaGetErrorString(err) << "\n";
-        exit(1);
+void check_cuda(cudaError_t error, const char* operation) {
+    if (error != cudaSuccess) {
+        std::cerr << "CUDA error during " << operation << ": "
+                  << cudaGetErrorString(error) << '\n';
+        std::exit(EXIT_FAILURE);
     }
 }
 
-// ---------------------------
-// GPU launcher
-void fibonacci_gpu_sequential(int count, int* output_host) {
-    int* output_device;
+std::vector<int> fibonacci_gpu(int count) {
+    int* output_device = nullptr;
+    std::vector<int> output_host(count);
 
-    checkCuda(cudaMalloc(&output_device, count * sizeof(int)), "Alloc output");
-    
-    // Launch only 1 thread for sequential computation
+    check_cuda(cudaMalloc(&output_device, count * sizeof(int)), "device allocation");
     fibonacci_kernel<<<1, 1>>>(output_device, count);
-    checkCuda(cudaGetLastError(), "Kernel launch");
-    checkCuda(cudaDeviceSynchronize(), "Kernel sync");
+    check_cuda(cudaGetLastError(), "kernel launch");
+    check_cuda(cudaDeviceSynchronize(), "kernel synchronization");
+    check_cuda(cudaMemcpy(output_host.data(), output_device, count * sizeof(int),
+                          cudaMemcpyDeviceToHost),
+               "device-to-host copy");
+    check_cuda(cudaFree(output_device), "device deallocation");
 
-    checkCuda(cudaMemcpy(output_host, output_device, count * sizeof(int), cudaMemcpyDeviceToHost), "Copy output");
-
-    cudaFree(output_device);
+    return output_host;
 }
 
-// ---------------------------
-// Main function
-int main() {
-    const int N =5;  // Keep small due to recursive inefficiency
+void print_usage(const char* executable) {
+    std::cout << "Usage: " << executable
+              << " [--count N] [--csv PATH]\n\n"
+              << "Options:\n"
+              << "  --count N   Number of Fibonacci terms to calculate (1-"
+              << kMaxCount << ", default " << kDefaultCount << ")\n"
+              << "  --csv PATH  Write benchmark timing data as CSV\n"
+              << "  --help      Show this help message\n";
+}
 
-    int* result_cpu = new int[N];
-    int* result_gpu = new int[N];
-
-    // CPU timing
-    auto start_cpu = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; ++i) {
-        result_cpu[i] = fibonacci_cpu(i);
+bool parse_positive_int(const std::string& value, int& result) {
+    try {
+        std::size_t parsed_length = 0;
+        const long parsed = std::stol(value, &parsed_length);
+        if (parsed_length != value.size() ||
+            parsed < 1 ||
+            parsed > std::numeric_limits<int>::max()) {
+            return false;
+        }
+        result = static_cast<int>(parsed);
+        return true;
+    } catch (const std::exception&) {
+        return false;
     }
-    auto end_cpu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> cpu_duration = end_cpu - start_cpu;
-    std::cout << "CPU Fibonacci time: " << cpu_duration.count() << " s\n";
+}
 
-    // GPU timing
-    auto start_gpu = std::chrono::high_resolution_clock::now();
-    fibonacci_gpu_sequential(N, result_gpu);
-    auto end_gpu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> gpu_duration = end_gpu - start_gpu;
-    std::cout << "GPU Fibonacci time: " << gpu_duration.count() << " s\n";
+bool parse_options(int argc, char** argv, Options& options, bool& show_help) {
+    for (int i = 1; i < argc; ++i) {
+        const std::string argument = argv[i];
+        if (argument == "--help") {
+            print_usage(argv[0]);
+            show_help = true;
+            return true;
+        }
+        if (argument == "--count" && i + 1 < argc) {
+            if (!parse_positive_int(argv[++i], options.count) ||
+                options.count > kMaxCount) {
+                std::cerr << "Error: --count must be between 1 and "
+                          << kMaxCount << ".\n";
+                return false;
+            }
+            continue;
+        }
+        if (argument == "--csv" && i + 1 < argc) {
+            options.csv_path = argv[++i];
+            continue;
+        }
 
-    // Compare results
-    bool equal = true;
-    for (int i = 0; i < N; ++i) {
-        if (result_cpu[i] != result_gpu[i]) {
-            equal = false;
-            std::cout << "Mismatch at index " << i << ": CPU=" << result_cpu[i] << ", GPU=" << result_gpu[i] << "\n";
+        std::cerr << "Error: unknown or incomplete option '" << argument << "'.\n";
+        print_usage(argv[0]);
+        return false;
+    }
+    return true;
+}
+
+bool write_csv(const std::string& path, int count, double cpu_seconds,
+               double gpu_seconds) {
+    std::ofstream output(path);
+    if (!output) {
+        std::cerr << "Error: unable to open CSV output '" << path << "'.\n";
+        return false;
+    }
+
+    output << "implementation,count,duration_seconds\n"
+           << "cpu," << count << ',' << std::setprecision(12) << cpu_seconds
+           << '\n'
+           << "gpu," << count << ',' << std::setprecision(12) << gpu_seconds
+           << '\n';
+    return true;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    Options options;
+    bool show_help = false;
+    if (!parse_options(argc, argv, options, show_help)) {
+        return 1;
+    }
+    if (show_help) {
+        return 0;
+    }
+
+    std::vector<int> cpu_results(options.count);
+    const auto cpu_start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < options.count; ++i) {
+        cpu_results[i] = fibonacci_cpu(i);
+    }
+    const auto cpu_end = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<double> cpu_duration = cpu_end - cpu_start;
+
+    const auto gpu_start = std::chrono::high_resolution_clock::now();
+    const std::vector<int> gpu_results = fibonacci_gpu(options.count);
+    const auto gpu_end = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<double> gpu_duration = gpu_end - gpu_start;
+
+    bool results_match = true;
+    for (int i = 0; i < options.count; ++i) {
+        if (cpu_results[i] != gpu_results[i]) {
+            results_match = false;
+            std::cout << "Mismatch at index " << i << ": CPU=" << cpu_results[i]
+                      << ", GPU=" << gpu_results[i] << '\n';
         }
     }
 
-    std::cout << "Fibonacci results match? " << (equal ? "Yes" : "No") << "\n";
+    std::cout << "Fibonacci benchmark (" << options.count << " terms)\n"
+              << "CPU time: " << std::fixed << std::setprecision(9)
+              << cpu_duration.count() << " s\n"
+              << "GPU time: " << gpu_duration.count() << " s\n"
+              << "Results match: " << (results_match ? "Yes" : "No") << '\n';
 
-    delete[] result_cpu;
-    delete[] result_gpu;
-    return 0;
+    if (!options.csv_path.empty() &&
+        !write_csv(options.csv_path, options.count, cpu_duration.count(),
+                   gpu_duration.count())) {
+        return 1;
+    }
+    if (!options.csv_path.empty()) {
+        std::cout << "CSV written to: " << options.csv_path << '\n';
+    }
+
+    return results_match ? 0 : 1;
 }

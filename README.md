@@ -1,68 +1,62 @@
-# fibonacci-algorithm-with-cuda
+# Fibonacci Algorithm with CUDA
 
-This is a small example of implementing the Fibonacci sequence using both
-a **CPU (recursive function)** and a **GPU (CUDA kernel)** to compare execution time.
-
-Although the GPU version here uses only **one thread** (to emulate sequential execution),
-this example is useful for understanding CUDA basics and verifying correctness.
-
----
+This project benchmarks a recursive Fibonacci implementation on the CPU and
+GPU. The GPU version intentionally uses one thread so the example demonstrates
+CUDA execution and transfer overhead for a sequential workload.
 
 ## Features
 
-- Recursive Fibonacci on CPU
-- Recursive Fibonacci on GPU (using a CUDA kernel)
-- Measures execution time of CPU vs GPU
-- Checks if both implementations return the same results
+- Recursive Fibonacci on CPU and GPU
+- Configurable number of terms
+- CPU/GPU timing and result validation
+- CSV timing export for charting
+- Clear CUDA error reporting
 
----
+## Requirements
 
-## How to Run
+- CUDA Toolkit with `nvcc`
+- A CUDA-capable GPU
 
-> Make sure CUDA Toolkit and a compatible GPU are installed on your machine.
+## Build and run
 
 ```bash
-# Compile
-nvcc app.cu -o fibonacci_cuda
-
-# Run
+nvcc fibonacci-algorithm-with-cuda.cu -o fibonacci_cuda
 ./fibonacci_cuda
 ```
 
----
+Run a larger benchmark and export timing data:
 
-## Example Output
-
-```
-CPU Fibonacci time: 0.00003 s
-GPU Fibonacci time: 0.00045 s
-Fibonacci results match? Yes
+```bash
+./fibonacci_cuda --count 30 --csv benchmark.csv
 ```
 
----
+Use `./fibonacci_cuda --help` to see all options. The program accepts 1 to 47
+terms; the upper bound prevents signed 32-bit integer overflow.
+
+## Example output
+
+```text
+Fibonacci benchmark (5 terms)
+CPU time: 0.000001200 s
+GPU time: 0.000423100 s
+Results match: Yes
+```
+
+The optional CSV output contains one row per implementation:
+
+```csv
+implementation,count,duration_seconds
+cpu,30,0.0000123
+gpu,30,0.0004512
+```
 
 ## Notes
 
-- Recursive Fibonacci is **not efficient**, which is why `N` is set to a small value.
-- The purpose of this example is educational, showing how to launch a kernel and transfer data.
-- You can later extend this by running multiple threads or generating each number in parallel.
-
----
-
-## Personal Insight
-
-In this part of the project, we used a recursive method to calculate Fibonacci numbers, which is a good example of a sequential task. Even though this program can be written in a parallel way, we chose to keep it recursive to show how GPUs handle tasks that must be done step by step.
-
-We started from Fibonacci(5) and went up to Fibonacci(35). As shown in the following table, the CPU is always faster than the GPU. When we tried to calculate numbers bigger than 45, the GPU often gave an error or wrong results (considering the CPU is always correct).
-
-In the first two examples (matrix multiplication and sorting), the GPU did better as the size of the problem increased. This might make it seem like GPUs are always faster — but that’s not true. The Fibonacci example shows that GPUs are not good at running tasks that depend on previous steps, like recursive functions.
-
-While GPUs are great for parallel tasks, CPUs are better for sequential tasks like this. This raised a question for me: **Why not run everything in parallel?**
-The answer is simple: while parallel computing offers great speedups for many problems, not every task can be done in parallel. Some tasks depend on the results of previous steps and must be performed one after another — these are called **sequential tasks**.
-
----
+Recursive Fibonacci is intentionally inefficient. This project is educational:
+the one-thread GPU implementation makes the sequential nature of the algorithm
+explicit rather than claiming that this workload should benefit from GPU
+parallelism.
 
 ## Author
 
 Amir Khoshdel Louyeh
-# fibonacci-algorithm-with-cuda
