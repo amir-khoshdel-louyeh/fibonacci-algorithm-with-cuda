@@ -15,6 +15,7 @@ struct Options {
     int count = fib::kDefaultCount;
     int sweep_start = 0;
     int sweep_end = 0;
+    fib::BenchmarkOptions benchmark;
     std::string csv_path;
 };
 
@@ -25,6 +26,9 @@ void print_usage(const char* executable) {
               << "  --count N   Number of Fibonacci terms to calculate (1-"
               << fib::kMaxCount << ", default " << fib::kDefaultCount << ")\n"
               << "  --sweep A B Benchmark every term count from A through B\n"
+              << "  --iterations N  Measured runs per implementation, median is "
+                 "reported (default 3)\n"
+              << "  --warmup N  Unmeasured runs before timing (default 1)\n"
               << "  --csv PATH  Write benchmark timing data as CSV\n"
               << "  --help      Show this help message\n";
 }
@@ -35,6 +39,22 @@ bool parse_positive_int(const std::string& value, int& result) {
         const long parsed = std::stol(value, &parsed_length);
         if (parsed_length != value.size() ||
             parsed < 1 ||
+            parsed > std::numeric_limits<int>::max()) {
+            return false;
+        }
+        result = static_cast<int>(parsed);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool parse_non_negative_int(const std::string& value, int& result) {
+    try {
+        std::size_t parsed_length = 0;
+        const long parsed = std::stol(value, &parsed_length);
+        if (parsed_length != value.size() ||
+            parsed < 0 ||
             parsed > std::numeric_limits<int>::max()) {
             return false;
         }
@@ -75,6 +95,21 @@ bool parse_options(int argc, char** argv, Options& options, bool& show_help) {
             }
             continue;
         }
+        if (argument == "--iterations" && i + 1 < argc) {
+            if (!parse_positive_int(argv[++i], options.benchmark.iterations)) {
+                std::cerr << "Error: --iterations must be at least 1.\n";
+                return false;
+            }
+            continue;
+        }
+        if (argument == "--warmup" && i + 1 < argc) {
+            if (!parse_non_negative_int(argv[++i],
+                                        options.benchmark.warmup_iterations)) {
+                std::cerr << "Error: --warmup must not be negative.\n";
+                return false;
+            }
+            continue;
+        }
         if (argument == "--csv" && i + 1 < argc) {
             options.csv_path = argv[++i];
             continue;
@@ -89,9 +124,11 @@ bool parse_options(int argc, char** argv, Options& options, bool& show_help) {
 
 void print_result(const fib::BenchmarkResult& result) {
     std::cout << "Fibonacci benchmark (" << result.count << " terms)\n"
+              << "Iterations: " << result.iterations << " (median)\n"
               << "CPU time: " << std::fixed << std::setprecision(9)
               << result.cpu_seconds << " s\n"
               << "GPU time: " << result.gpu_seconds << " s\n"
+              << "GPU kernel time: " << result.gpu_kernel_seconds << " s\n"
               << "Results match: " << (result.results_match ? "Yes" : "No")
               << '\n';
 }
@@ -120,7 +157,7 @@ int run(const Options& options) {
     std::vector<fib::BenchmarkResult> results;
     if (options.sweep_start != 0) {
         for (int count = options.sweep_start; count <= options.sweep_end; ++count) {
-            results.push_back(fib::run_benchmark(count));
+            results.push_back(fib::run_benchmark(count, options.benchmark));
         }
         std::cout << "Fibonacci benchmark sweep\n"
                   << "Count       CPU (s)        GPU (s)        Match\n";
@@ -132,7 +169,7 @@ int run(const Options& options) {
                       << '\n';
         }
     } else {
-        results.push_back(fib::run_benchmark(options.count));
+        results.push_back(fib::run_benchmark(options.count, options.benchmark));
         print_result(results.front());
     }
 
