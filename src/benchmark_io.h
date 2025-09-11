@@ -19,4 +19,8 @@ bool write_json(const std::string& path,
                 const std::vector<BenchmarkResult>& results,
                 std::string& error);
 
+bool read_csv(const std::string& path,
+              std::vector<BenchmarkResult>& results,
+              std::string& error);
+
 }  // namespace fib
