@@ -20,6 +20,17 @@ CUDA execution and transfer overhead for a sequential workload.
 
 ## Build and run
 
+The recommended build uses CMake:
+
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/fibonacci_cuda
+```
+
+The direct `nvcc` command is also supported:
+
 ```bash
 nvcc fibonacci-algorithm-with-cuda.cu -o fibonacci_cuda
 ./fibonacci_cuda
