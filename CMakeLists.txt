@@ -7,7 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-add_library(fibonacci_core STATIC src/fibonacci_core.cu)
+add_library(fibonacci_core STATIC
+    src/benchmark_io.cpp
+    src/fibonacci_core.cu
+)
 target_include_directories(fibonacci_core PUBLIC src)
 set_target_properties(fibonacci_core PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON

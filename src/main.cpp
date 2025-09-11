@@ -1,5 +1,4 @@
 #include <cstdlib>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -7,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "benchmark_io.h"
 #include "fibonacci_core.h"
 
 namespace {
@@ -17,6 +17,7 @@ struct Options {
     int sweep_end = 0;
     fib::BenchmarkOptions benchmark;
     std::string csv_path;
+    std::string json_path;
 };
 
 void print_usage(const char* executable) {
@@ -30,6 +31,7 @@ void print_usage(const char* executable) {
                  "reported (default 3)\n"
               << "  --warmup N  Unmeasured runs before timing (default 1)\n"
               << "  --csv PATH  Write benchmark timing data as CSV\n"
+              << "  --json PATH Write benchmark timing data as JSON\n"
               << "  --help      Show this help message\n";
 }
 
@@ -114,6 +116,10 @@ bool parse_options(int argc, char** argv, Options& options, bool& show_help) {
             options.csv_path = argv[++i];
             continue;
         }
+        if (argument == "--json" && i + 1 < argc) {
+            options.json_path = argv[++i];
+            continue;
+        }
 
         std::cerr << "Error: unknown or incomplete option '" << argument << "'.\n";
         print_usage(argv[0]);
@@ -131,26 +137,6 @@ void print_result(const fib::BenchmarkResult& result) {
               << "GPU kernel time: " << result.gpu_kernel_seconds << " s\n"
               << "Results match: " << (result.results_match ? "Yes" : "No")
               << '\n';
-}
-
-bool write_csv(const std::string& path,
-               const std::vector<fib::BenchmarkResult>& results) {
-    std::ofstream output(path);
-    if (!output) {
-        std::cerr << "Error: unable to open CSV output '" << path << "'.\n";
-        return false;
-    }
-
-    output << "implementation,count,duration_seconds,results_match\n";
-    for (const fib::BenchmarkResult& result : results) {
-        output << "cpu," << result.count << ',' << std::setprecision(12)
-               << result.cpu_seconds << ','
-               << (result.results_match ? "true" : "false") << '\n'
-               << "gpu," << result.count << ',' << std::setprecision(12)
-               << result.gpu_seconds << ','
-               << (result.results_match ? "true" : "false") << '\n';
-    }
-    return true;
 }
 
 int run(const Options& options) {
@@ -173,11 +159,22 @@ int run(const Options& options) {
         print_result(results.front());
     }
 
-    if (!options.csv_path.empty() && !write_csv(options.csv_path, results)) {
+    std::string io_error;
+    if (!options.csv_path.empty() &&
+        !fib::write_csv(options.csv_path, results, io_error)) {
+        std::cerr << "Error: " << io_error << ".\n";
         return 1;
     }
     if (!options.csv_path.empty()) {
         std::cout << "CSV written to: " << options.csv_path << '\n';
+    }
+    if (!options.json_path.empty() &&
+        !fib::write_json(options.json_path, results, io_error)) {
+        std::cerr << "Error: " << io_error << ".\n";
+        return 1;
+    }
+    if (!options.json_path.empty()) {
+        std::cout << "JSON written to: " << options.json_path << '\n';
     }
 
     for (const fib::BenchmarkResult& result : results) {
