@@ -8,6 +8,7 @@ CUDA execution and transfer overhead for a sequential workload.
 
 - Recursive Fibonacci on CPU and GPU
 - Configurable number of terms
+- Benchmark sweeps across multiple input sizes
 - CPU/GPU timing and result validation
 - CSV timing export for charting
 - Clear CUDA error reporting
@@ -28,6 +29,9 @@ Run a larger benchmark and export timing data:
 
 ```bash
 ./fibonacci_cuda --count 30 --csv benchmark.csv
+
+# Sweep from 5 through 30 terms and export chart-ready data
+./fibonacci_cuda --sweep 5 30 --csv sweep.csv
 ```
 
 Use `./fibonacci_cuda --help` to see all options. The program accepts 1 to 47
@@ -45,10 +49,13 @@ Results match: Yes
 The optional CSV output contains one row per implementation:
 
 ```csv
-implementation,count,duration_seconds
-cpu,30,0.0000123
-gpu,30,0.0004512
+implementation,count,duration_seconds,results_match
+cpu,30,0.0000123,true
+gpu,30,0.0004512,true
 ```
+
+Sweep exports include a `results_match` column and one CPU and GPU row for
+every input size, making them suitable for plotting directly.
 
 ## Notes
 
