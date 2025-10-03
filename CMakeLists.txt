@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
+include(CTest)
+
 add_library(fibonacci_io STATIC src/benchmark_io.cpp)
 target_include_directories(fibonacci_io PUBLIC src)
 
@@ -25,24 +27,27 @@ if(BUILD_GUI)
     find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Charts)
     qt_standard_project_setup()
 
-    qt_add_executable(fibonacci_gui
-        src/gui/main.cpp
+    qt_add_library(fibonacci_gui_lib OBJECT
+        src/gui/benchmark_worker.cpp
+        src/gui/benchmark_worker.h
         src/gui/main_window.cpp
         src/gui/main_window.h
     )
-    target_link_libraries(fibonacci_gui PRIVATE
+    target_include_directories(fibonacci_gui_lib PUBLIC src src/gui)
+    target_link_libraries(fibonacci_gui_lib PUBLIC
         fibonacci_core
         fibonacci_io
         Qt6::Widgets
         Qt6::Charts
     )
+
+    qt_add_executable(fibonacci_gui src/gui/main.cpp)
+    target_link_libraries(fibonacci_gui PRIVATE fibonacci_gui_lib)
     set_target_properties(fibonacci_gui PROPERTIES
         WIN32_EXECUTABLE ON
         MACOSX_BUNDLE ON
     )
 endif()
-
-include(CTest)
 
 if(BUILD_TESTING)
     add_executable(fibonacci_io_test tests/test_benchmark_io.cpp)
@@ -68,4 +73,22 @@ if(BUILD_TESTING)
     set_tests_properties(fibonacci_rejects_invalid_count PROPERTIES
         PASS_REGULAR_EXPRESSION "--count must be between"
     )
+
+    if(BUILD_GUI)
+        find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+
+        qt_add_executable(fibonacci_gui_test tests/test_gui_smoke.cpp)
+        target_link_libraries(fibonacci_gui_test PRIVATE
+            fibonacci_gui_lib
+            Qt6::Test
+        )
+
+        add_test(
+            NAME fibonacci_gui_smoke
+            COMMAND fibonacci_gui_test
+        )
+        set_tests_properties(fibonacci_gui_smoke PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        )
+    endif()
 endif()
