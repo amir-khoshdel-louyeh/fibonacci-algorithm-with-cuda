@@ -104,6 +104,7 @@ void MainWindow::buildUi() {
     progress_bar_->setObjectName(QStringLiteral("progressBar"));
     progress_bar_->setRange(0, 1);
     progress_bar_->setValue(0);
+    progress_bar_->setVisible(false);
     actions->addWidget(run_button_);
     actions->addWidget(cancel_button_);
     actions->addWidget(progress_bar_);
@@ -281,6 +282,7 @@ void MainWindow::startBenchmark() {
     chart_->clear();
     progress_bar_->setRange(0, last_count - first_count + 1);
     progress_bar_->setValue(0);
+    progress_bar_->setVisible(true);
     statusBar()->showMessage(tr("Running benchmark..."));
 
     auto* thread = new QThread();
@@ -489,6 +491,7 @@ void MainWindow::showAbout() {
 }
 
 void MainWindow::onFinished(const QString& error, bool canceled) {
+    progress_bar_->setVisible(false);
     setRunning(false);
 
     if (!error.isEmpty()) {

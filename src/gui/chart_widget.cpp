@@ -193,7 +193,7 @@ void ChartWidget::rebuild() {
     break_even->append(last_count + 0.5, 1.0);
 
     auto* y_axis = new QValueAxis();
-    y_axis->setTitleText(tr("CPU time / GPU time"));
+    y_axis->setTitleText(tr("Speedup"));
     y_axis->setLabelFormat(QStringLiteral("%.1f"));
     y_axis->setRange(0.0, std::max(1.2, maximum_speedup * 1.15));
     y_axis->applyNiceNumbers();
