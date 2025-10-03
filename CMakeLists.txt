@@ -30,6 +30,8 @@ if(BUILD_GUI)
     qt_add_library(fibonacci_gui_lib OBJECT
         src/gui/benchmark_worker.cpp
         src/gui/benchmark_worker.h
+        src/gui/chart_widget.cpp
+        src/gui/chart_widget.h
         src/gui/main_window.cpp
         src/gui/main_window.h
     )

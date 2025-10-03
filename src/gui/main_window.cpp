@@ -1,5 +1,6 @@
 #include "main_window.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -10,6 +11,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QSplitter>
 #include <QStatusBar>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -18,6 +20,7 @@
 #include <QWidget>
 
 #include "benchmark_worker.h"
+#include "chart_widget.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     buildUi();
@@ -117,7 +120,34 @@ void MainWindow::buildUi() {
     results_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     results_table_->setAlternatingRowColors(true);
     results_layout->addWidget(results_table_);
-    layout->addWidget(results_group, 1);
+
+    auto* chart_group = new QGroupBox(tr("Visualization"), central);
+    auto* chart_layout = new QVBoxLayout(chart_group);
+    auto* chart_controls = new QHBoxLayout();
+    chart_mode_combo_ = new QComboBox(chart_group);
+    chart_mode_combo_->setObjectName(QStringLiteral("chartModeCombo"));
+    chart_mode_combo_->addItems(
+        {tr("Execution time"), tr("CPU / GPU speedup")});
+    log_scale_check_ = new QCheckBox(tr("Logarithmic scale"), chart_group);
+    log_scale_check_->setObjectName(QStringLiteral("logScaleCheck"));
+    chart_controls->addWidget(new QLabel(tr("Chart"), chart_group));
+    chart_controls->addWidget(chart_mode_combo_);
+    chart_controls->addStretch();
+    chart_controls->addWidget(log_scale_check_);
+    chart_layout->addLayout(chart_controls);
+
+    chart_ = new ChartWidget(chart_group);
+    chart_->setObjectName(QStringLiteral("chartWidget"));
+    chart_layout->addWidget(chart_, 1);
+
+    auto* splitter = new QSplitter(Qt::Vertical, central);
+    splitter->addWidget(results_group);
+    splitter->addWidget(chart_group);
+    splitter->setChildrenCollapsible(false);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 2);
+    splitter->setSizes({240, 360});
+    layout->addWidget(splitter, 1);
 
     setCentralWidget(central);
 
@@ -137,8 +167,16 @@ void MainWindow::buildUi() {
                     sweep_end_spin_->setValue(value);
                 }
             });
+    connect(chart_mode_combo_, &QComboBox::currentIndexChanged, this,
+            [this](int index) {
+                chart_->setMode(index == 0 ? ChartWidget::Mode::Timings
+                                           : ChartWidget::Mode::Speedup);
+                log_scale_check_->setEnabled(index == 0);
+            });
+    connect(log_scale_check_, &QCheckBox::toggled, this,
+            [this](bool checked) { chart_->setLogScale(checked); });
 
-    resize(1000, 700);
+    resize(1100, 800);
 }
 
 void MainWindow::showDeviceInfo() {
@@ -201,6 +239,7 @@ void MainWindow::startBenchmark() {
 
     results_.clear();
     results_table_->setRowCount(0);
+    chart_->clear();
     progress_bar_->setRange(0, last_count - first_count + 1);
     progress_bar_->setValue(0);
     statusBar()->showMessage(tr("Running benchmark..."));
@@ -257,6 +296,7 @@ void MainWindow::onResultReady(const fib::BenchmarkResult& result) {
 
 void MainWindow::appendResult(const fib::BenchmarkResult& result) {
     results_.push_back(result);
+    chart_->addResult(result);
 
     const int row = results_table_->rowCount();
     results_table_->insertRow(row);

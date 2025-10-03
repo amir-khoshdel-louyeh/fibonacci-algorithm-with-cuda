@@ -8,6 +8,8 @@
 #include "fibonacci_core.h"
 
 class BenchmarkWorker;
+class ChartWidget;
+class QCheckBox;
 class QComboBox;
 class QLabel;
 class QProgressBar;
@@ -48,6 +50,9 @@ private:
     QProgressBar* progress_bar_ = nullptr;
     QLabel* device_label_ = nullptr;
     QTableWidget* results_table_ = nullptr;
+    ChartWidget* chart_ = nullptr;
+    QComboBox* chart_mode_combo_ = nullptr;
+    QCheckBox* log_scale_check_ = nullptr;
 
     std::vector<fib::BenchmarkResult> results_;
     fib::DeviceInfo device_;

@@ -21,6 +21,7 @@ void GuiSmokeTest::windowBuilds() {
     QVERIFY(window.isVisible());
     QVERIFY(window.findChild<QPushButton*>("runButton") != nullptr);
     QVERIFY(window.findChild<QTableWidget*>("resultsTable") != nullptr);
+    QVERIFY(window.findChild<QWidget*>("chartView") != nullptr);
 }
 
 void GuiSmokeTest::runsSingleBenchmark() {
