@@ -52,6 +52,14 @@ if(BUILD_GUI)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(fibonacci_core_test tests/test_fibonacci_core.cpp)
+    target_link_libraries(fibonacci_core_test PRIVATE fibonacci_core)
+
+    add_test(
+        NAME fibonacci_core_correctness
+        COMMAND fibonacci_core_test
+    )
+
     add_executable(fibonacci_io_test tests/test_benchmark_io.cpp)
     target_link_libraries(fibonacci_io_test PRIVATE fibonacci_io)
 
