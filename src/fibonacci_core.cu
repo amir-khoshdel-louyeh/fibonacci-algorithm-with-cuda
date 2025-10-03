@@ -91,6 +91,35 @@ std::vector<int> compute_gpu(int count) {
     return fibonacci_gpu(count, kernel_seconds);
 }
 
+DeviceInfo query_device() {
+    DeviceInfo info;
+    int device_count = 0;
+    cudaError_t status = cudaGetDeviceCount(&device_count);
+    if (status != cudaSuccess) {
+        info.error = cudaGetErrorString(status);
+        return info;
+    }
+    if (device_count == 0) {
+        info.error = "no CUDA-capable device found";
+        return info;
+    }
+
+    cudaDeviceProp properties{};
+    status = cudaGetDeviceProperties(&properties, 0);
+    if (status != cudaSuccess) {
+        info.error = cudaGetErrorString(status);
+        return info;
+    }
+
+    info.available = true;
+    info.name = properties.name;
+    info.compute_major = properties.major;
+    info.compute_minor = properties.minor;
+    info.multiprocessor_count = properties.multiProcessorCount;
+    info.total_memory_bytes = properties.totalGlobalMem;
+    return info;
+}
+
 BenchmarkResult run_benchmark(int count, const BenchmarkOptions& options) {
     if (count < 1 || count > kMaxCount) {
         throw std::invalid_argument("benchmark count out of range");
