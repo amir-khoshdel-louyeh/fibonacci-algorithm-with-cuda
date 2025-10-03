@@ -19,6 +19,29 @@ set_target_properties(fibonacci_core PROPERTIES
 add_executable(fibonacci_cuda src/main.cpp)
 target_link_libraries(fibonacci_cuda PRIVATE fibonacci_core fibonacci_io)
 
+option(BUILD_GUI "Build the Qt 6 desktop application" ON)
+
+if(BUILD_GUI)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Charts)
+    qt_standard_project_setup()
+
+    qt_add_executable(fibonacci_gui
+        src/gui/main.cpp
+        src/gui/main_window.cpp
+        src/gui/main_window.h
+    )
+    target_link_libraries(fibonacci_gui PRIVATE
+        fibonacci_core
+        fibonacci_io
+        Qt6::Widgets
+        Qt6::Charts
+    )
+    set_target_properties(fibonacci_gui PROPERTIES
+        WIN32_EXECUTABLE ON
+        MACOSX_BUNDLE ON
+    )
+endif()
+
 include(CTest)
 
 if(BUILD_TESTING)
