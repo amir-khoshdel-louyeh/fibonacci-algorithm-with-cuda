@@ -15,8 +15,12 @@ CUDA execution and transfer overhead for a sequential workload.
 
 ## Requirements
 
-- CUDA Toolkit with `nvcc`
+See [REQUIREMENTS.md](REQUIREMENTS.md) for the full list and distro-specific
+install commands. At minimum you need:
+
+- CUDA Toolkit with `nvcc` and the CUDART development headers
 - A CUDA-capable GPU
+- Qt 6 Widgets and Charts for the optional GUI
 
 ## Build and run
 
