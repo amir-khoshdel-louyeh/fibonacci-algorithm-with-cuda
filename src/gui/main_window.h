@@ -9,6 +9,7 @@
 
 class BenchmarkWorker;
 class ChartWidget;
+class QAction;
 class QCheckBox;
 class QComboBox;
 class QLabel;
@@ -32,11 +33,17 @@ private slots:
     void onProgress(int completed, int total);
     void onResultReady(const fib::BenchmarkResult& result);
     void onFinished(const QString& error, bool canceled);
+    void openCsvSession();
+    void saveCsv();
+    void saveJson();
+    void exportChart();
+    void showAbout();
 
 private:
     void buildUi();
     void showDeviceInfo();
     void setRunning(bool running);
+    void updateActions();
     void appendResult(const fib::BenchmarkResult& result);
 
     QComboBox* mode_combo_ = nullptr;
@@ -53,6 +60,10 @@ private:
     ChartWidget* chart_ = nullptr;
     QComboBox* chart_mode_combo_ = nullptr;
     QCheckBox* log_scale_check_ = nullptr;
+    QAction* open_csv_action_ = nullptr;
+    QAction* save_csv_action_ = nullptr;
+    QAction* save_json_action_ = nullptr;
+    QAction* export_image_action_ = nullptr;
 
     std::vector<fib::BenchmarkResult> results_;
     fib::DeviceInfo device_;

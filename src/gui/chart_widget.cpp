@@ -10,6 +10,7 @@
 #include <QLogValueAxis>
 #include <QPainter>
 #include <QPen>
+#include <QPixmap>
 #include <QValueAxis>
 #include <QVBoxLayout>
 
@@ -56,6 +57,20 @@ void ChartWidget::setLogScale(bool enabled) {
     }
     log_scale_ = enabled;
     rebuild();
+}
+
+bool ChartWidget::savePng(const QString& path, QString& error) const {
+    if (results_.empty()) {
+        error = tr("There is no chart data to export.");
+        return false;
+    }
+
+    const QPixmap pixmap = view_->grab();
+    if (pixmap.isNull() || !pixmap.save(path, "PNG")) {
+        error = tr("Could not write the chart image to %1.").arg(path);
+        return false;
+    }
+    return true;
 }
 
 void ChartWidget::rebuild() {

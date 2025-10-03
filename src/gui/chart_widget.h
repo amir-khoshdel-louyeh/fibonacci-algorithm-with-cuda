@@ -8,6 +8,7 @@
 
 class QChart;
 class QChartView;
+class QString;
 
 class ChartWidget : public QWidget {
     Q_OBJECT
@@ -24,6 +25,7 @@ public:
     void addResult(const fib::BenchmarkResult& result);
     void setMode(Mode mode);
     void setLogScale(bool enabled);
+    bool savePng(const QString& path, QString& error) const;
 
 private:
     void rebuild();

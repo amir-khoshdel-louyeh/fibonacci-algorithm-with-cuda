@@ -1,12 +1,17 @@
 #include "main_window.h"
 
+#include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
@@ -19,6 +24,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "benchmark_io.h"
 #include "benchmark_worker.h"
 #include "chart_widget.h"
 
@@ -155,6 +161,22 @@ void MainWindow::buildUi() {
     statusBar()->addPermanentWidget(device_label_);
     statusBar()->showMessage(tr("Ready."));
 
+    QMenu* file_menu = menuBar()->addMenu(tr("&File"));
+    open_csv_action_ = file_menu->addAction(tr("&Open session..."), this,
+                                            &MainWindow::openCsvSession);
+    file_menu->addSeparator();
+    save_csv_action_ = file_menu->addAction(tr("Save &CSV..."), this,
+                                            &MainWindow::saveCsv);
+    save_json_action_ = file_menu->addAction(tr("Save &JSON..."), this,
+                                             &MainWindow::saveJson);
+    export_image_action_ = file_menu->addAction(
+        tr("Export chart &image..."), this, &MainWindow::exportChart);
+    file_menu->addSeparator();
+    file_menu->addAction(tr("&Quit"), this, &QWidget::close);
+
+    QMenu* help_menu = menuBar()->addMenu(tr("&Help"));
+    help_menu->addAction(tr("&About"), this, &MainWindow::showAbout);
+
     connect(mode_combo_, &QComboBox::currentIndexChanged, this,
             &MainWindow::updateControlState);
     connect(run_button_, &QPushButton::clicked, this,
@@ -210,6 +232,23 @@ void MainWindow::updateControlState() {
     warmup_spin_->setEnabled(!running_);
     run_button_->setEnabled(!running_ && device_.available);
     cancel_button_->setEnabled(running_);
+    updateActions();
+}
+
+void MainWindow::updateActions() {
+    const bool has_results = !results_.empty();
+    if (open_csv_action_ != nullptr) {
+        open_csv_action_->setEnabled(!running_);
+    }
+    if (save_csv_action_ != nullptr) {
+        save_csv_action_->setEnabled(has_results && !running_);
+    }
+    if (save_json_action_ != nullptr) {
+        save_json_action_->setEnabled(has_results && !running_);
+    }
+    if (export_image_action_ != nullptr) {
+        export_image_action_->setEnabled(has_results && !running_);
+    }
 }
 
 void MainWindow::setRunning(bool running) {
@@ -327,6 +366,126 @@ void MainWindow::appendResult(const fib::BenchmarkResult& result) {
     }
     results_table_->setItem(row, 5, match);
     results_table_->scrollToBottom();
+    updateActions();
+}
+
+void MainWindow::openCsvSession() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Open benchmark session"), QString(),
+        tr("CSV files (*.csv);;All files (*)"));
+    if (path.isEmpty()) {
+        return;
+    }
+
+    std::vector<fib::BenchmarkResult> loaded;
+    std::string error;
+    if (!fib::read_csv(path.toStdString(), loaded, error)) {
+        QMessageBox::warning(this, tr("Open failed"),
+                             QString::fromStdString(error));
+        return;
+    }
+    if (loaded.empty()) {
+        QMessageBox::information(
+            this, tr("Open session"),
+            tr("The selected file contains no benchmark results."));
+        return;
+    }
+
+    results_.clear();
+    results_table_->setRowCount(0);
+    chart_->clear();
+    for (const fib::BenchmarkResult& result : loaded) {
+        appendResult(result);
+    }
+    statusBar()->showMessage(
+        tr("Loaded %1 result(s) from %2")
+            .arg(static_cast<int>(loaded.size()))
+            .arg(path));
+}
+
+void MainWindow::saveCsv() {
+    if (results_.empty()) {
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Save benchmark results"),
+        QStringLiteral("fibonacci-benchmark.csv"), tr("CSV files (*.csv)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path += QStringLiteral(".csv");
+    }
+
+    std::string error;
+    if (!fib::write_csv(path.toStdString(), results_, error)) {
+        QMessageBox::warning(this, tr("Save failed"),
+                             QString::fromStdString(error));
+        return;
+    }
+    statusBar()->showMessage(
+        tr("Saved %1 result(s) to %2")
+            .arg(static_cast<int>(results_.size()))
+            .arg(path));
+}
+
+void MainWindow::saveJson() {
+    if (results_.empty()) {
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Save benchmark results"),
+        QStringLiteral("fibonacci-benchmark.json"), tr("JSON files (*.json)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path += QStringLiteral(".json");
+    }
+
+    std::string error;
+    if (!fib::write_json(path.toStdString(), results_, error)) {
+        QMessageBox::warning(this, tr("Save failed"),
+                             QString::fromStdString(error));
+        return;
+    }
+    statusBar()->showMessage(
+        tr("Saved %1 result(s) to %2")
+            .arg(static_cast<int>(results_.size()))
+            .arg(path));
+}
+
+void MainWindow::exportChart() {
+    if (results_.empty()) {
+        return;
+    }
+    QString path = QFileDialog::getSaveFileName(
+        this, tr("Export chart image"),
+        QStringLiteral("fibonacci-chart.png"), tr("PNG images (*.png)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path += QStringLiteral(".png");
+    }
+
+    QString error;
+    if (!chart_->savePng(path, error)) {
+        QMessageBox::warning(this, tr("Export failed"), error);
+        return;
+    }
+    statusBar()->showMessage(tr("Saved chart image to %1").arg(path));
+}
+
+void MainWindow::showAbout() {
+    QMessageBox::about(
+        this, tr("About Fibonacci CUDA Benchmark"),
+        tr("<h3>Fibonacci CUDA Benchmark</h3>"
+           "<p>Compares a recursive Fibonacci implementation on the CPU with "
+           "a single-threaded CUDA kernel.</p>"
+           "<p>GPU timings include allocation, kernel execution, and transfer "
+           "overhead; kernel time is measured with CUDA events.</p>"
+           "<p>Author: Amir Khoshdel Louyeh</p>"));
 }
 
 void MainWindow::onFinished(const QString& error, bool canceled) {
