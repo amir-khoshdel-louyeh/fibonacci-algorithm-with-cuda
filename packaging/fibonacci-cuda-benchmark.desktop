@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Fibonacci CUDA Benchmark
+GenericName=GPU Benchmark
+Comment=Compare CPU and CUDA Fibonacci implementations
+Exec=fibonacci_gui
+Icon=fibonacci-cuda-benchmark
+Terminal=false
+Categories=Education;Science;Utility;
+Keywords=CUDA;GPU;Fibonacci;Benchmark;CPU;
+StartupNotify=true

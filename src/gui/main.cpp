@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     qRegisterMetaType<fib::BenchmarkResult>("fib::BenchmarkResult");
     application.setApplicationName("Fibonacci CUDA Benchmark");
     application.setApplicationDisplayName("Fibonacci CUDA Benchmark");
-    application.setApplicationVersion("0.1.0");
+    application.setApplicationVersion(QStringLiteral(FIB_VERSION));
     application.setOrganizationName("Fibonacci CUDA");
 
     MainWindow window;

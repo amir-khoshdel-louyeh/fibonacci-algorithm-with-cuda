@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(fibonacci_algorithm_with_cuda LANGUAGES CXX CUDA)
+project(fibonacci_algorithm_with_cuda
+    VERSION 0.1.0
+    DESCRIPTION "CPU and GPU Fibonacci benchmark with a Qt 6 GUI"
+    LANGUAGES CXX CUDA
+)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,11 +49,44 @@ if(BUILD_GUI)
 
     qt_add_executable(fibonacci_gui src/gui/main.cpp)
     target_link_libraries(fibonacci_gui PRIVATE fibonacci_gui_lib)
+    target_compile_definitions(fibonacci_gui PRIVATE
+        FIB_VERSION="${PROJECT_VERSION}"
+    )
     set_target_properties(fibonacci_gui PROPERTIES
         WIN32_EXECUTABLE ON
         MACOSX_BUNDLE ON
     )
 endif()
+
+include(GNUInstallDirs)
+
+install(TARGETS fibonacci_cuda
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+if(BUILD_GUI)
+    install(TARGETS fibonacci_gui
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+    install(FILES packaging/fibonacci-cuda-benchmark.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+    )
+    install(FILES packaging/fibonacci-cuda-benchmark.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+    )
+endif()
+
+set(CPACK_PACKAGE_NAME "fibonacci-cuda-benchmark")
+set(CPACK_PACKAGE_VENDOR "Amir Khoshdel Louyeh")
+set(CPACK_PACKAGE_CONTACT "Amir Khoshdel Louyeh")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "CPU and GPU Fibonacci benchmark with a Qt 6 GUI"
+)
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_GENERATOR "TGZ")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+include(CPack)
 
 if(BUILD_TESTING)
     add_executable(fibonacci_core_test tests/test_fibonacci_core.cpp)
