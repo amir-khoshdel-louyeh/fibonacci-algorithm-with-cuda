@@ -54,6 +54,16 @@ Run the GUI or the CLI:
 ./build/fibonacci_cuda --help
 ```
 
+The Python entry point starts the compiled Qt GUI:
+
+```bash
+python3 main.py
+```
+
+It uses only the Python standard library. Install the documented Python
+requirements with `pip install -r requirements.txt` if your workflow expects a
+requirements file.
+
 Build without Qt:
 
 ```bash
