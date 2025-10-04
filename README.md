@@ -2,7 +2,7 @@
 
 A C++17 / CUDA benchmark and Qt 6 desktop application that measures exactly what a GPU costs when the workload cannot be parallelised — comparing a recursive CPU implementation with a deliberately single-threaded CUDA kernel.
 
-![Fibonacci CUDA Benchmark GUI](docs/benchmark-timings.png)
+![Fibonacci CUDA Benchmark GUI](assets/readme/benchmark-timings.png)
 
 `C++17` · `CUDA` · `Qt 6` · Benchmark / systems programming · Complete
 
@@ -37,7 +37,11 @@ CLI sweep, median of 3 measured iterations after 1 warm-up (`./build/fibonacci_c
 
 All 32 sweep rows (15–30) reported `Match = Yes`; CPU and GPU sequences were identical. The steady ~35–45× ratio shows that the overhead scales with the work rather than being a fixed launch cost — the kernel is simply running an exponential serial algorithm on one GPU thread at a lower clock than the CPU.
 
-![Speedup chart](docs/benchmark-speedup.png)
+![Speedup chart](assets/readme/benchmark-speedup.png)
+
+![GPU-to-CPU slowdown](assets/readme/benchmark-slowdown.png)
+
+The slowdown chart uses the measured medians from the table: the one-thread GPU path stays roughly 35–45× slower across the sweep.
 
 **Environment:** NVIDIA GeForce RTX 5070 Laptop GPU, 8 GB, driver 620.70, Linux. Absolute timings vary with clocks, thermals and driver version; compare medians and trends, not single samples.
 
@@ -98,7 +102,7 @@ The GUI links the same static `fibonacci_core` and `fibonacci_io` libraries as t
 │   └── gui/                      # Qt window, charts, worker thread
 ├── tests/                        # Core, I/O, CLI and headless GUI tests
 ├── packaging/                    # Desktop entry and icon
-├── docs/                         # Screenshots
+├── assets/readme/                # Screenshots and benchmark charts
 ├── CMakeLists.txt · CMakePresets.json
 └── .github/workflows/ci.yml      # CUDA container build + full test suite
 ```
